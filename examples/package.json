@@ -17,6 +17,7 @@
     "@types/papaparse": "^5.3.1",
     "@types/seedrandom": "^3.0.1",
     "chroma-js": "^2.1.2",
+    "context-menu": "^2.0.0",
     "file-saver": "^2.0.5",
     "graphology": "^0.23.2",
     "graphology-components": "^1.5.2",

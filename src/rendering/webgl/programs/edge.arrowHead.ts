@@ -92,6 +92,12 @@ export default class EdgeArrowHeadProgram extends AbstractEdgeProgram {
     // nothing to do
   }
 
+  setSourceData(
+    sourceData: NodeDisplayData,
+  ): void {
+    // nothing to do
+  }
+
   process(
     sourceData: NodeDisplayData,
     targetData: NodeDisplayData,

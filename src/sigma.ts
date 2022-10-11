@@ -849,6 +849,10 @@ export default class Sigma<GraphType extends Graph = Graph> extends TypedEventEm
 
       const hidden = data.hidden || sourceData.hidden || targetData.hidden;
       this.edgePrograms[data.type].process(sourceData, targetData, data, hidden, edgesPerPrograms[data.type]++);
+
+      if (data.type == 'dotted') {
+        this.edgePrograms[data.type].setSourceData(sourceData);
+      }
     }
 
     for (const type in this.edgePrograms) {

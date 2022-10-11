@@ -15,6 +15,8 @@ import { EdgeDisplayData, NodeDisplayData } from "./types";
 import CircleNodeProgram from "./rendering/webgl/programs/node.fast";
 import LineEdgeProgram from "./rendering/webgl/programs/edge";
 import ArrowEdgeProgram from "./rendering/webgl/programs/edge.arrow";
+import EdgeDottedProgram from "./rendering/webgl/programs/edge.dotted";
+import EdgePaddedProgram from "./rendering/webgl/programs/edge.padded";
 import { EdgeProgramConstructor } from "./rendering/webgl/programs/common/edge";
 import { NodeProgramConstructor } from "./rendering/webgl/programs/common/node";
 
@@ -135,5 +137,7 @@ export const DEFAULT_SETTINGS: Settings = {
   edgeProgramClasses: {
     arrow: ArrowEdgeProgram,
     line: LineEdgeProgram,
+    dotted: EdgeDottedProgram,
+    padded: EdgePaddedProgram,
   },
 };

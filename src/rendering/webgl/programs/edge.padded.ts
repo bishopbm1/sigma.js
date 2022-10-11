@@ -11,8 +11,8 @@
 import { EdgeDisplayData, NodeDisplayData } from "../../../types";
 import { AbstractEdgeProgram } from "./common/edge";
 import { floatColor, canUse32BitsIndices } from "../../../utils";
-import vertexShaderSource from "../shaders/edge.clamped.vert.glsl";
-import fragmentShaderSource from "../shaders/edge.frag.glsl";
+import vertexShaderSource from "../shaders/edge.padded.vert.glsl";
+import fragmentShaderSource from "../shaders/edge.padded.frag.glsl";
 import { RenderParams } from "./common/program";
 
 const POINTS = 4,
@@ -144,7 +144,8 @@ export default class EdgeClampedProgram extends AbstractEdgeProgram {
     array[i++] = n1;
     array[i++] = n2;
     array[i++] = color;
-    array[i++] = 0;
+    // array[i++] = 0;
+    array[i++] = -radius;
 
     // First point flipped
     array[i++] = x1;
@@ -152,7 +153,8 @@ export default class EdgeClampedProgram extends AbstractEdgeProgram {
     array[i++] = -n1;
     array[i++] = -n2;
     array[i++] = color;
-    array[i++] = 0;
+    // array[i++] = 0;
+    array[i++] = radius;
 
     // Second point
     array[i++] = x2;
