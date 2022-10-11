@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sigma LaughingOwl</title>
+  </head>
+  <body>
+    <style>
+      html,
+      body,
+      #sigma-container {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      #controls {
+        position: absolute;
+        right: 2em;
+        bottom: 2em;
+        text-align: right;
+      }
+      .input {
+        position: relative;
+        display: inline-block;
+        vertical-align: middle;
+      }
+      .input:not(:hover) label {
+        display: none;
+      }
+      .input label {
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: black;
+        color: white;
+        padding: 0.2em;
+        border-radius: 2px;
+        margin-top: 0.3em;
+        font-size: 0.8em;
+        white-space: nowrap;
+      }
+      .input button {
+        width: 2.5em;
+        height: 2.5em;
+        display: inline-block;
+        text-align: center;
+        background: white;
+        outline: none;
+        border: 1px solid dimgrey;
+        border-radius: 2px;
+        cursor: pointer;
+      }
+      #context-menu {
+        position: fixed;
+        z-index: 10000;
+        width: 150px;
+        background: #1b1a1a;
+        border-radius: 5px;
+        transform: scale(0);
+        transform-origin: top left;
+      }
+      #context-menu.visible {
+        transform: scale(1);
+        transition: transform 200ms ease-in-out;
+      }
+      #context-menu .item {
+        padding: 8px 10px;
+        font-size: 15px;
+        color: #eee;
+        cursor: pointer;
+        border-radius: inherit;
+      }
+      #context-menu .item:hover {
+        background: #343434;
+      }
+      #alignment {
+        position: absolute;
+        right: 1em;
+        top: 1em;
+      }
+    </style>
+    <div id="sigma-container"></div>
+    <div id="controls">
+      <div class="input"><label for="zoom-in">Zoom in</label><button id="zoom-in">+</button></div>
+      <div class="input"><label for="zoom-out">Zoom out</label><button id="zoom-out">-</button></div>
+      <div class="input"><label for="zoom-reset">Reset zoom</label><button id="zoom-reset">⊙</button></div>
+    </div>
+    <div id="context-menu" class="context-menu">
+      <div id="malop-remove" class="item">Remove Malop</div>
+      <div id="malop-add" class="item">Undo Last Remove</div>
+      <div id="malop-xr" class="item" disabled>XR</div>
+      <div id="malop-xr-cas" class="item" disabled>XR-CASCADE</div>
+    </div>
+    <div id="alignment">
+      <select name="alignment-select" id="alignment-select">
+        <option value="machine" selected>Machine</option>
+        <option value="user">User</option>
+        <option value="mitre" disabled>MITRE</option>
+      </select>
+    </div>
+    <script src="build/bundle.js"></script>
+  </body>
+</html>

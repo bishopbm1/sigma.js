@@ -2,64 +2,72 @@
  * Sigma.js WebGL Renderer Edge Program
  * =====================================
  *
- * Program rendering edges as thick lines but with a twist: the end of edge
- * does not sit in the middle of target node but instead stays by some margin.
+ * Program rendering edges as thick lines using four points translated
+ * orthogonally from the source & target's centers by half thickness.
  *
- * This is useful when combined with arrows to draw directed edges.
+ * Rendering two triangles by using only four points is made possible through
+ * the use of indices.
+ *
+ * This method should be faster than the 6 points / 2 triangles approach and
+ * should handle thickness better than with gl.LINES.
+ *
+ * This version of the shader balances geometry computation evenly between
+ * the CPU & GPU (normals are computed on the CPU side).
  * @module
  */
-import { EdgeDisplayData, NodeDisplayData } from "../../../types";
-import { AbstractEdgeProgram } from "./common/edge";
 import { floatColor, canUse32BitsIndices } from "../../../utils";
-import vertexShaderSource from "../shaders/edge.clamped.vert.glsl";
-import fragmentShaderSource from "../shaders/edge.frag.glsl";
+import { EdgeDisplayData, NodeDisplayData } from "../../../types";
+import vertexShaderSource from "../shaders/edge.dotted.vert.glsl";
+import fragmentShaderSource from "../shaders/edge.dotted.frag.glsl";
+import { AbstractEdgeProgram } from "./common/edge";
 import { RenderParams } from "./common/program";
 
 const POINTS = 4,
-  ATTRIBUTES = 6,
+  ATTRIBUTES = 5,
   STRIDE = POINTS * ATTRIBUTES;
 
-export default class EdgeClampedProgram extends AbstractEdgeProgram {
+export default class EdgeProgram extends AbstractEdgeProgram {
   IndicesArray: Uint32ArrayConstructor | Uint16ArrayConstructor;
   indicesArray: Uint32Array | Uint16Array;
   indicesBuffer: WebGLBuffer;
   indicesType: GLenum;
+  canUse32BitsIndices: boolean;
   positionLocation: GLint;
+  startPosLocation: WebGLUniformLocation;
   colorLocation: GLint;
   normalLocation: GLint;
-  radiusLocation: GLint;
   matrixLocation: WebGLUniformLocation;
   sqrtZoomRatioLocation: WebGLUniformLocation;
   correctionRatioLocation: WebGLUniformLocation;
-  canUse32BitsIndices: boolean;
 
   constructor(gl: WebGLRenderingContext) {
     super(gl, vertexShaderSource, fragmentShaderSource, POINTS, ATTRIBUTES);
 
     // Initializing indices buffer
     const indicesBuffer = gl.createBuffer();
-    if (indicesBuffer === null) throw new Error("EdgeClampedProgram: error while getting resolutionLocation");
+    if (indicesBuffer === null) throw new Error("EdgeProgram: error while creating indicesBuffer");
     this.indicesBuffer = indicesBuffer;
 
-    // Locations:
+    // Locations
     this.positionLocation = gl.getAttribLocation(this.program, "a_position");
     this.colorLocation = gl.getAttribLocation(this.program, "a_color");
     this.normalLocation = gl.getAttribLocation(this.program, "a_normal");
-    this.radiusLocation = gl.getAttribLocation(this.program, "a_radius");
 
-    // Uniform locations
     const matrixLocation = gl.getUniformLocation(this.program, "u_matrix");
-    if (matrixLocation === null) throw new Error("EdgeClampedProgram: error while getting matrixLocation");
+    if (matrixLocation === null) throw new Error("EdgeProgram: error while getting matrixLocation");
     this.matrixLocation = matrixLocation;
 
+    const correctionRatioLocation = gl.getUniformLocation(this.program, "u_correctionRatio");
+    if (correctionRatioLocation === null) throw new Error("EdgeProgram: error while getting correctionRatioLocation");
+    this.correctionRatioLocation = correctionRatioLocation;
+
     const sqrtZoomRatioLocation = gl.getUniformLocation(this.program, "u_sqrtZoomRatio");
-    if (sqrtZoomRatioLocation === null) throw new Error("EdgeClampedProgram: error while getting cameraRatioLocation");
+    if (sqrtZoomRatioLocation === null) throw new Error("EdgeProgram: error while getting sqrtZoomRatioLocation");
     this.sqrtZoomRatioLocation = sqrtZoomRatioLocation;
 
-    const correctionRatioLocation = gl.getUniformLocation(this.program, "u_correctionRatio");
-    if (correctionRatioLocation === null)
-      throw new Error("EdgeClampedProgram: error while getting viewportRatioLocation");
-    this.correctionRatioLocation = correctionRatioLocation;
+    const startPosLocation = gl.getUniformLocation(this.program, "u_startPos");
+    if (startPosLocation === null) throw new Error("EdgeProgram: error while getting startPosLocation");
+    this.startPosLocation = startPosLocation;
 
     // Enabling the OES_element_index_uint extension
     // NOTE: on older GPUs, this means that really large graphs won't
@@ -84,7 +92,6 @@ export default class EdgeClampedProgram extends AbstractEdgeProgram {
     gl.enableVertexAttribArray(this.positionLocation);
     gl.enableVertexAttribArray(this.normalLocation);
     gl.enableVertexAttribArray(this.colorLocation);
-    gl.enableVertexAttribArray(this.radiusLocation);
 
     gl.vertexAttribPointer(this.positionLocation, 2, gl.FLOAT, false, ATTRIBUTES * Float32Array.BYTES_PER_ELEMENT, 0);
     gl.vertexAttribPointer(this.normalLocation, 2, gl.FLOAT, false, ATTRIBUTES * Float32Array.BYTES_PER_ELEMENT, 8);
@@ -96,7 +103,41 @@ export default class EdgeClampedProgram extends AbstractEdgeProgram {
       ATTRIBUTES * Float32Array.BYTES_PER_ELEMENT,
       16,
     );
-    gl.vertexAttribPointer(this.radiusLocation, 1, gl.FLOAT, false, ATTRIBUTES * Float32Array.BYTES_PER_ELEMENT, 20);
+  }
+
+  computeIndices(): void {
+    const l = this.array.length / ATTRIBUTES;
+    const size = l + l / 2;
+    const indices = new this.IndicesArray(size);
+
+    for (let i = 0, c = 0; i < l; i += 4) {
+      indices[c++] = i;
+      indices[c++] = i + 1;
+      indices[c++] = i + 2;
+      indices[c++] = i + 2;
+      indices[c++] = i + 1;
+      indices[c++] = i + 3;
+    }
+
+    this.indicesArray = indices;
+  }
+
+  bufferData(): void {
+    super.bufferData();
+
+    // Indices data
+    const gl = this.gl;
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.indicesArray, gl.STATIC_DRAW);
+  }
+
+  setSourceData(
+    sourceData: NodeDisplayData,
+  ): void {
+    // this.sourceData = new Float32Array([x1,y1]);
+    // this.targetData = new Float32Array([x2,y2]);
+    // Indices data
+    const gl = this.gl;
+    gl.uniform2f(this.startPosLocation, sourceData.x, sourceData.y);
   }
 
   process(
@@ -116,8 +157,11 @@ export default class EdgeClampedProgram extends AbstractEdgeProgram {
       y1 = sourceData.y,
       x2 = targetData.x,
       y2 = targetData.y,
-      radius = targetData.size || 1,
       color = floatColor(data.color);
+
+    // // this.sourceData = new Float32Array([x1, y1, x2, y2]);
+    // this.sourceData = new Float32Array([x1,y1]);
+    // this.targetData = new Float32Array([x2,y2]);
 
     // Computing normals
     const dx = x2 - x1,
@@ -144,7 +188,6 @@ export default class EdgeClampedProgram extends AbstractEdgeProgram {
     array[i++] = n1;
     array[i++] = n2;
     array[i++] = color;
-    array[i++] = 0;
 
     // First point flipped
     array[i++] = x1;
@@ -152,7 +195,6 @@ export default class EdgeClampedProgram extends AbstractEdgeProgram {
     array[i++] = -n1;
     array[i++] = -n2;
     array[i++] = color;
-    array[i++] = 0;
 
     // Second point
     array[i++] = x2;
@@ -160,57 +202,23 @@ export default class EdgeClampedProgram extends AbstractEdgeProgram {
     array[i++] = n1;
     array[i++] = n2;
     array[i++] = color;
-    array[i++] = radius;
 
     // Second point flipped
     array[i++] = x2;
     array[i++] = y2;
     array[i++] = -n1;
     array[i++] = -n2;
-    array[i++] = color;
-    array[i] = -radius;
-  }
-
-  computeIndices(): void {
-    const l = this.array.length / ATTRIBUTES;
-    const size = l + l / 2;
-    const indices = new this.IndicesArray(size);
-
-    for (let i = 0, c = 0; i < l; i += 4) {
-      indices[c++] = i;
-      indices[c++] = i + 1;
-      indices[c++] = i + 2;
-      indices[c++] = i + 2;
-      indices[c++] = i + 1;
-      indices[c++] = i + 3;
-    }
-
-    this.indicesArray = indices;
-  }
-
-  setSourceData(
-    sourceData: NodeDisplayData,
-  ): void {
-    // nothing to do
-  }
-
-  bufferData(): void {
-    super.bufferData();
-
-    // Indices data
-    const gl = this.gl;
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.indicesArray, gl.STATIC_DRAW);
+    array[i] = color;
   }
 
   render(params: RenderParams): void {
     if (this.hasNothingToRender()) return;
 
     const gl = this.gl;
-
     const program = this.program;
+
     gl.useProgram(program);
 
-    // Binding uniforms
     gl.uniformMatrix3fv(this.matrixLocation, false, params.matrix);
     gl.uniform1f(this.sqrtZoomRatioLocation, Math.sqrt(params.ratio));
     gl.uniform1f(this.correctionRatioLocation, params.correctionRatio);

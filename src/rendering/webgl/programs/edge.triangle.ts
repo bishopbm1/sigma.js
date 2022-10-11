@@ -131,6 +131,12 @@ export default class EdgeTriangleProgram extends AbstractEdgeProgram {
     // nothing todo ?
   }
 
+  setSourceData(
+    sourceData: NodeDisplayData,
+  ): void {
+    // nothing to do
+  }
+
   render(params: RenderParams): void {
     if (this.hasNothingToRender()) return;
 

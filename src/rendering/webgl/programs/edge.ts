@@ -117,6 +117,12 @@ export default class EdgeProgram extends AbstractEdgeProgram {
     this.indicesArray = indices;
   }
 
+  setSourceData(
+    sourceData: NodeDisplayData,
+  ): void {
+    // nothing to do
+  }
+
   bufferData(): void {
     super.bufferData();
 

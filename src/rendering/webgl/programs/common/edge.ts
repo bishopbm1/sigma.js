@@ -10,6 +10,7 @@ import Sigma from "../../../../sigma";
 
 export interface IEdgeProgram extends IProgram {
   computeIndices(): void;
+  setSourceData(sourceData: NodeDisplayData): void;
   process(
     sourceData: NodeDisplayData,
     targetData: NodeDisplayData,
@@ -38,6 +39,7 @@ export abstract class AbstractEdgeProgram extends AbstractProgram implements IEd
 
   abstract bind(): void;
   abstract computeIndices(): void;
+  abstract setSourceData(sourceData: NodeDisplayData): void;
   abstract process(
     sourceData: NodeDisplayData,
     targetData: NodeDisplayData,
@@ -74,6 +76,10 @@ export function createEdgeCompoundProgram(programClasses: Array<EdgeProgramConst
 
     computeIndices(): void {
       this.programs.forEach((program) => program.computeIndices());
+    }
+
+    setSourceData(sourceData: NodeDisplayData): void {
+      this.programs.forEach((program) => program.setSourceData(sourceData));
     }
 
     render(params: RenderParams): void {
